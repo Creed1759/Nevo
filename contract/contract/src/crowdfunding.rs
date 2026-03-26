@@ -346,7 +346,6 @@ impl CrowdfundingTrait for CrowdfundingContract {
         );
 
         events::ticket_sold(&env, pool_id, buyer, price, event_amount, fee_amount);
-
         Ok((event_amount, fee_amount))
     }
 
