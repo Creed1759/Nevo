@@ -165,6 +165,18 @@ impl CrowdfundingTrait for CrowdfundingContract {
             .unwrap_or(0))
     }
 
+    fn holds_ticket(
+        env: Env,
+        event_id: BytesN<32>,
+        user: Address,
+    ) -> Result<bool, CrowdfundingError> {
+        // Validate campaign exists (which is our event in this context)
+        Self::get_campaign(env.clone(), event_id.clone())?;
+
+        let donor_key = StorageKey::CampaignDonor(event_id, user);
+        Ok(env.storage().instance().get(&donor_key).unwrap_or(false))
+    }
+
     fn get_global_raised_total(env: Env) -> i128 {
         env.storage()
             .instance()
