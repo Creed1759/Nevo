@@ -291,6 +291,8 @@ pub enum StorageKey {
     EventPlatformFees(u64),
     // Track if someone bought a ticket
     UserTicket(u64, Address),
+    // Track total tickets sold for an event
+    EventMetrics(BytesN<32>),
 }
 
 #[cfg(test)]
