@@ -1,20 +1,22 @@
 #![allow(deprecated)]
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, String, Vec};
 
+use crate::base::errors::SecondCrowdfundingError;
 use crate::base::{
-    errors::{CrowdfundingError, SecondCrowdfundingError},
+    errors::CrowdfundingError,
     events,
     reentrancy::{
         acquire_emergency_lock, reentrancy_lock_logic, release_emergency_lock, release_pool_lock,
     },
     types::{
         CampaignDetails, CampaignLifecycleStatus, CampaignMetrics, Contribution,
-        EmergencyWithdrawal, EventMetrics, MultiSigConfig, PoolConfig, PoolContribution,
-        PoolMetadata, PoolMetrics, PoolState, StorageKey, MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH,
-        MAX_STRING_LENGTH, MAX_URL_LENGTH,
+        EmergencyWithdrawal, EventDetails, EventMetrics, MultiSigConfig, PoolConfig,
+        PoolContribution, PoolMetadata, PoolMetrics, PoolState, StorageKey, MAX_DESCRIPTION_LENGTH,
+        MAX_HASH_LENGTH, MAX_STRING_LENGTH, MAX_URL_LENGTH,
     },
 };
 use crate::interfaces::crowdfunding::CrowdfundingTrait;
+#[cfg(test)]
 use crate::interfaces::second_crowdfunding::SecondCrowdfundingTrait;
 
 #[contract]
@@ -332,9 +334,16 @@ impl CrowdfundingTrait for CrowdfundingContract {
             .instance()
             .set(&event_fee_key, &(current_fees + fee_amount));
 
-        // Track user ticket
-        let user_ticket_key = StorageKey::UserTicket(pool_id, buyer.clone());
-        env.storage().instance().set(&user_ticket_key, &true);
+        let event_fee_treasury_key = StorageKey::EventFeeTreasury;
+        let current_event_fee_treasury: i128 = env
+            .storage()
+            .instance()
+            .get(&event_fee_treasury_key)
+            .unwrap_or(0);
+        env.storage().instance().set(
+            &event_fee_treasury_key,
+            &(current_event_fee_treasury + fee_amount),
+        );
 
         // Update event metrics
         let metrics_key = StorageKey::EventMetrics(pool_id);
@@ -347,7 +356,6 @@ impl CrowdfundingTrait for CrowdfundingContract {
         env.storage().instance().set(&metrics_key, &metrics);
 
         events::ticket_sold(&env, pool_id, buyer, price, event_amount, fee_amount);
-
         Ok((event_amount, fee_amount))
     }
 
@@ -974,12 +982,14 @@ impl CrowdfundingTrait for CrowdfundingContract {
         events::pool_created(
             &env,
             pool_id,
-            config.name.clone(),
-            config.description.clone(),
             creator.clone(),
-            config.target_amount,
-            config.min_contribution,
-            deadline,
+            (
+                config.name.clone(),
+                config.description.clone(),
+                config.target_amount,
+                config.min_contribution,
+                deadline,
+            ),
         );
 
         events::event_created(
@@ -1114,12 +1124,14 @@ impl CrowdfundingTrait for CrowdfundingContract {
         events::pool_created(
             &env,
             pool_id,
-            name,
-            metadata.description.clone(),
             creator,
-            target_amount,
-            0,
-            deadline,
+            (
+                name,
+                metadata.description.clone(),
+                target_amount,
+                0,
+                deadline,
+            ),
         );
 
         Ok(pool_id)
@@ -1932,6 +1944,7 @@ impl CrowdfundingContract {
     }
 }
 
+#[cfg(test)]
 impl SecondCrowdfundingTrait for CrowdfundingContract {
     /// Validates that `title` does not exceed the maximum allowed length and,
     /// if the check passes, delegates to the primary `create_campaign`
@@ -1953,16 +1966,34 @@ impl SecondCrowdfundingTrait for CrowdfundingContract {
 
     fn create_event(
         env: Env,
-        _id: BytesN<32>,
+        id: BytesN<32>,
         title: String,
-        _creator: Address,
-        _ticket_price: i128,
-        _max_attendees: u32,
-        _deadline: u64,
-        _token: Address,
+        creator: Address,
+        ticket_price: i128,
+        max_attendees: u32,
+        deadline: u64,
+        token: Address,
     ) -> Result<(), SecondCrowdfundingError> {
         Self::validate_string_length(&title)?;
-        let _ = env;
+
+        let details = EventDetails {
+            id: id.clone(),
+            title,
+            creator,
+            ticket_price,
+            max_attendees,
+            deadline,
+            token,
+        };
+
+        env.storage()
+            .instance()
+            .set(&StorageKey::Event(id.clone()), &details);
+
+        env.storage()
+            .instance()
+            .set(&StorageKey::EventMetrics(id), &EventMetrics::new());
+
         Ok(())
     }
 }

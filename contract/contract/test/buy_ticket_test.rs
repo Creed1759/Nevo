@@ -3,9 +3,13 @@
 use soroban_sdk::{testutils::Address as _, token, Address, Env};
 
 use crate::{
-    base::{errors::CrowdfundingError, types::PoolConfig},
+    base::{
+        errors::CrowdfundingError,
+        types::{PoolConfig, StorageKey},
+    },
     crowdfunding::{CrowdfundingContract, CrowdfundingContractClient},
 };
+use soroban_sdk::{testutils::Events, Symbol, TryFromVal};
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +57,111 @@ fn mint_and_buy(
     (buyer, result)
 }
 
+fn read_i128_storage(env: &Env, client: &CrowdfundingContractClient<'_>, key: &StorageKey) -> i128 {
+    env.as_contract(&client.address, || {
+        env.storage().instance().get(key).unwrap_or(0)
+    })
+}
+
+// ── full success ──────────────────────────────────────────────────────────────
+
+#[test]
+fn test_buy_ticket_full_success() {
+    let env = Env::default();
+    let (client, _, token) = setup(&env);
+    let pool_id = create_pool(&client, &env, &token);
+
+    // 1. Configure platform fee (5% = 500 bps)
+    client.set_platform_fee_bps(&500);
+
+    // 2. Prepare buyer
+    let buyer = Address::generate(&env);
+    let price = 10_000i128;
+    let token_admin_client = token::StellarAssetClient::new(&env, &token);
+    token_admin_client.mint(&buyer, &price);
+
+    let token_client = token::Client::new(&env, &token);
+    let buyer_balance_before = token_client.balance(&buyer);
+    let contract_balance_before = token_client.balance(&client.address);
+
+    // 3. Execute buy_ticket
+    let (event_amount, fee_amount) = client.buy_ticket(&pool_id, &buyer, &token, &price);
+
+    // 4. Assertions - Return Values
+    // 5% of 10,000 = 500
+    assert_eq!(fee_amount, 500, "fee amount correctly calculated");
+    assert_eq!(event_amount, 9_500, "event amount correctly calculated");
+    assert_eq!(event_amount + fee_amount, price, "split sums to price");
+
+    // 5. Assertions - Token Balances
+    assert_eq!(
+        token_client.balance(&buyer),
+        buyer_balance_before - price,
+        "buyer balance decreased by price"
+    );
+    assert_eq!(
+        token_client.balance(&client.address),
+        contract_balance_before + price,
+        "contract balance increased by price"
+    );
+
+    // 6. Assertions - Internal Storage Updates
+    env.as_contract(&client.address, || {
+        let storage = env.storage().instance();
+
+        let saved_event_amount: i128 = storage.get(&StorageKey::EventPool(pool_id)).unwrap_or(0);
+        assert_eq!(
+            saved_event_amount, event_amount,
+            "EventPool storage updated"
+        );
+
+        let saved_fee_amount: i128 = storage
+            .get(&StorageKey::EventPlatformFees(pool_id))
+            .unwrap_or(0);
+        assert_eq!(
+            saved_fee_amount, fee_amount,
+            "EventPlatformFees storage updated"
+        );
+
+        let fee_treasury_amount: i128 = storage.get(&StorageKey::EventFeeTreasury).unwrap_or(0);
+        assert_eq!(
+            fee_treasury_amount, fee_amount,
+            "EventFeeTreasury storage updated"
+        );
+    });
+
+    // 7. Assertions - Events
+    let all_events = env.events().all();
+
+    // We expect at least the ticket_sold event.
+    // In this environment, we previously saw 2 events from create_pool.
+    // So we look for the ticket_sold event among all events.
+    let ticket_sold_event = all_events.iter().find(|e| {
+        let topics = &e.1;
+        if topics.len() < 3 {
+            return false;
+        }
+
+        let event_name = Symbol::try_from_val(&env, &topics.get(0).unwrap());
+        let event_pool_id = u64::try_from_val(&env, &topics.get(1).unwrap());
+        let event_buyer = Address::try_from_val(&env, &topics.get(2).unwrap());
+
+        event_name == Ok(Symbol::new(&env, "ticket_sold"))
+            && event_pool_id == Ok(pool_id)
+            && event_buyer == Ok(buyer.clone())
+    });
+
+    if let Some(event) = ticket_sold_event {
+        let data = &event.2;
+        let decoded: Result<(i128, i128, i128), _> = TryFromVal::try_from_val(&env, data);
+        assert_eq!(
+            decoded,
+            Ok((price, event_amount, fee_amount)),
+            "event data matches"
+        );
+    }
+}
+
 // ── fee arithmetic ────────────────────────────────────────────────────────────
 
 #[test]
@@ -68,6 +177,18 @@ fn test_buy_ticket_zero_fee_bps_full_amount_to_event_pool() {
     assert_eq!(event_amount, 10_000, "full price must go to event pool");
     assert_eq!(fee_amount, 0, "no platform fee when bps = 0");
     assert_eq!(event_amount + fee_amount, price, "split must sum to price");
+    assert_eq!(
+        read_i128_storage(&env, &client, &StorageKey::EventPool(pool_id)),
+        price
+    );
+    assert_eq!(
+        read_i128_storage(&env, &client, &StorageKey::EventPlatformFees(pool_id)),
+        0
+    );
+    assert_eq!(
+        read_i128_storage(&env, &client, &StorageKey::EventFeeTreasury),
+        0
+    );
 }
 
 #[test]
@@ -177,6 +298,18 @@ fn test_buy_ticket_accumulates_across_multiple_purchases() {
         contract_balance,
         price * 3,
         "contract holds all ticket revenue"
+    );
+    assert_eq!(
+        read_i128_storage(&env, &client, &StorageKey::EventPool(pool_id)),
+        29_250
+    );
+    assert_eq!(
+        read_i128_storage(&env, &client, &StorageKey::EventPlatformFees(pool_id)),
+        750
+    );
+    assert_eq!(
+        read_i128_storage(&env, &client, &StorageKey::EventFeeTreasury),
+        750
     );
 }
 
