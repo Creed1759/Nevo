@@ -1,4 +1,46 @@
 use soroban_sdk::contracterror;
 
 #[contracterror]
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[repr(u32)]
+pub enum CrowdfundingError {
+    NotInitialized = 1,
+    AlreadyInitialized = 2,
+    ContractPaused = 3,
+    PoolNotFound = 4,
+    InvalidAmount = 5,
+    InvalidToken = 6,
+    PoolAlreadyExists = 7,
+    InvalidPoolState = 8,
+    EventSoldOut = 9,
+    Unauthorized = 10,
+    InsufficientBalance = 11,
+    CampaignNotFound = 12,
+    CampaignAlreadyExists = 13,
+    InvalidTitle = 14,
+    InvalidGoal = 15,
+    InvalidDeadline = 16,
+    CampaignExpired = 17,
+    CampaignAlreadyFunded = 18,
+    TokenTransferFailed = 19,
+    RefundNotAvailable = 20,
+    NoContributionToRefund = 21,
+    PoolNotExpired = 22,
+    PoolAlreadyDisbursed = 23,
+    RefundGracePeriodNotPassed = 24,
+    InvalidFee = 25,
+    InsufficientFees = 26,
+    InvalidMultiSigConfig = 27,
+    InvalidSignerCount = 28,
+    StringTooLong = 29,
+    InvalidMetadata = 30,
+    InvalidPoolName = 31,
+    InvalidPoolTarget = 32,
+    InvalidPoolDeadline = 33,
+    EmergencyWithdrawalNotRequested = 34,
+    EmergencyWithdrawalAlreadyRequested = 35,
+    EmergencyWithdrawalPeriodNotPassed = 36,
+    PoolAlreadyClosed = 37,
+    PoolNotDisbursedOrRefunded = 38,
+    ReentrancyLocked = 39,
+}
