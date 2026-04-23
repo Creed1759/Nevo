@@ -219,3 +219,12 @@ pub fn scholarship_rejected(env: &Env, pool_id: u64, applicant: Address, validat
     let topics = (Symbol::new(env, "scholarship_rejected"), pool_id, applicant);
     env.events().publish(topics, validator);
 }
+pub fn application_approved(env: &Env, admin: Address, cause: Address) {
+    let topics = (symbol_short!("AppApprv"), admin);
+    env.events().publish(topics, cause);
+}
+
+pub fn application_rejected(env: &Env, admin: Address, cause: Address) {
+    let topics = (symbol_short!("AppRej"), admin);
+    env.events().publish(topics, cause);
+}

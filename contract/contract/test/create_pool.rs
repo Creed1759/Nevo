@@ -193,7 +193,7 @@ fn test_create_pool_emits_event_created() {
         is_private: false,
         duration,
         created_at,
-        token_address,
+        token_address: token_address.clone(),
         validator: creator.clone(),
     };
 
