@@ -4,7 +4,6 @@ use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, V
 use crate::base::errors::SecondCrowdfundingError;
 use crate::base::{
     errors::{CrowdfundingError, SecondCrowdfundingError, ValidationError},
-    errors::CrowdfundingError,
     events,
     reentrancy::{
         acquire_emergency_lock, reentrancy_lock_logic, release_emergency_lock, release_pool_lock,
@@ -14,11 +13,6 @@ use crate::base::{
         EmergencyWithdrawal, EventDetails, EventMetrics, MultiSigConfig, PoolConfig,
         PoolContribution, PoolMetadata, PoolMetrics, PoolState, ScholarshipApplication, StorageKey,
         MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH, MAX_STRING_LENGTH, MAX_URL_LENGTH,
-        ApplicationDetails, ApplicationStatus, CampaignDetails, CampaignLifecycleStatus,
-        CampaignMetrics, Contribution, EmergencyWithdrawal, EventDetails, EventMetrics,
-        MultiSigConfig, PoolConfig, PoolContribution, PoolMetadata, PoolMetrics, PoolState,
-        StorageKey, MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH, MAX_STRING_LENGTH,
-        MAX_URL_LENGTH,
     },
 };
 use crate::interfaces::application::ApplicationTrait;

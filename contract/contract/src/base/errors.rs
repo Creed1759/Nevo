@@ -70,6 +70,17 @@ pub enum ValidationError {
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
 #[repr(u32)]
+pub enum ValidationError {
+    ApplicationNotFound = 1,
+    ApplicationAlreadyProcessed = 2,
+    ApplicationAlreadyExists = 3,
+    PoolNotFound = 4,
+    Unauthorized = 5,
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[repr(u32)]
 pub enum SecondCrowdfundingError {
     StringTooLong = 1,
     EventNotFound = 2,
