@@ -204,3 +204,13 @@ pub fn ticket_sold(
     env.events()
         .publish(topics, (price, event_amount, fee_amount));
 }
+
+pub fn application_approved(env: &Env, admin: Address, cause: Address) {
+    let topics = (symbol_short!("AppApprv"), admin);
+    env.events().publish(topics, cause);
+}
+
+pub fn application_rejected(env: &Env, admin: Address, cause: Address) {
+    let topics = (symbol_short!("AppRej"), admin);
+    env.events().publish(topics, cause);
+}

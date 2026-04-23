@@ -55,6 +55,10 @@ pub enum CrowdfundingError {
     UserBlacklisted = 49,
     CampaignCancelled = 50,
     InsufficientSponsorBalance = 51,
+    ApplicationNotFound = 51,
+    ApplicationAlreadySubmitted = 52,
+    ApplicationAlreadyReviewed = 53,
+    InvalidApplicationCredentials = 54,
 }
 
 #[contracterror]
