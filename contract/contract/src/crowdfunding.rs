@@ -2117,7 +2117,7 @@ impl CrowdfundingTrait for CrowdfundingContract {
 
         // Fetch pool from persistent storage — panics if not found
         let pool_key = StorageKey::Pool(pool_id);
-        let _pool: PoolConfig = env
+        let pool: PoolConfig = env
             .storage()
             .instance()
             .get(&pool_key)
@@ -2137,7 +2137,8 @@ impl CrowdfundingTrait for CrowdfundingContract {
         };
 
         env.storage().instance().set(&app_key, &application);
-        events::scholarship_applied(&env, pool_id, applicant);
+        events::scholarship_applied(&env, pool_id, applicant.clone());
+        events::application_submitted(&env, pool_id, applicant, pool.target_amount);
         Ok(())
     }
 
