@@ -23,7 +23,9 @@ fn test_create_pool_with_deposit() {
     // Setup admin and token
     let admin = Address::generate(&env);
     let token_admin = Address::generate(&env);
-    let token_address = env.register_stellar_asset_contract_v2(token_admin).address();
+    let token_address = env
+        .register_stellar_asset_contract_v2(token_admin)
+        .address();
     let token = TokenClient::new(&env, &token_address);
 
     // Initialize the contract with a creation fee of 100
