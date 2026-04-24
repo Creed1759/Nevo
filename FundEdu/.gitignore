@@ -1,0 +1,17 @@
+# Rust's output directory
+target
+
+# Local settings
+.soroban
+.stellar
+
+# Test snapshots (auto-generated)
+contract/test_snapshots
+
+
+
+# Snapshots
+test_snapshots/
+.DS_Store
+**/.DS_Store
+**/.DS_Store

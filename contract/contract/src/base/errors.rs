@@ -107,6 +107,8 @@ pub enum CrowdfundingError {
     UserBlacklisted = 49,
     /// CampaignCancelled = 50.
     CampaignCancelled = 50,
+    DeadlinePassed = 51,
+    VectorLimitExceeded = 52,
 }
 
 /// Documentation for this item.

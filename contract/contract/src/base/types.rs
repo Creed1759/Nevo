@@ -126,6 +126,7 @@ pub const MAX_URL_LENGTH: u32 = 200;
 pub const MAX_HASH_LENGTH: u32 = 100;
 /// The const MAX STRING LENGTH.
 pub const MAX_STRING_LENGTH: u32 = 200;
+pub const MAX_SINGLE_OP_ITEMS: u32 = 200;
 
 impl PoolConfig {
     /// Validate pool configuration according to Nevo invariants.
@@ -155,6 +156,12 @@ impl PoolConfig {
 
         // Duration must be strictly positive (non-zero)
         assert!(self.duration > 0, "duration must be > 0");
+
+        // application_deadline must not be before pool creation time
+        assert!(
+            self.application_deadline >= self.created_at,
+            "application_deadline must be >= created_at"
+        );
     }
 }
 
