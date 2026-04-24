@@ -54,6 +54,8 @@ pub enum CrowdfundingError {
     InsufficientFees = 48,
     UserBlacklisted = 49,
     CampaignCancelled = 50,
+    DeadlinePassed = 51,
+    VectorLimitExceeded = 52,
 }
 
 #[contracterror]

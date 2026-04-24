@@ -12,7 +12,7 @@ use crate::base::{
         ApplicationStatus, CampaignDetails, CampaignLifecycleStatus, CampaignMetrics, Contribution,
         EmergencyWithdrawal, EventDetails, EventMetrics, MultiSigConfig, PoolConfig,
         PoolContribution, PoolMetadata, PoolMetrics, PoolState, ScholarshipApplication, StorageKey,
-        MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH, MAX_STRING_LENGTH, MAX_URL_LENGTH,
+        MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH, MAX_SINGLE_OP_ITEMS, MAX_STRING_LENGTH, MAX_URL_LENGTH,
     },
 };
 use crate::interfaces::application::ApplicationTrait;
@@ -175,6 +175,9 @@ impl CrowdfundingTrait for CrowdfundingContract {
             .instance()
             .get(&StorageKey::AllCampaigns)
             .unwrap_or(Vec::new(&env));
+        if all_campaigns.len() >= MAX_SINGLE_OP_ITEMS {
+            return Err(CrowdfundingError::VectorLimitExceeded);
+        }
         all_campaigns.push_back(id.clone());
         env.storage()
             .instance()
@@ -871,6 +874,9 @@ impl CrowdfundingTrait for CrowdfundingContract {
         env: Env,
         campaign_ids: Vec<BytesN<32>>,
     ) -> Vec<Result<(), CrowdfundingError>> {
+        if campaign_ids.len() > MAX_SINGLE_OP_ITEMS {
+            return Vec::new(&env);
+        }
         let mut results = Vec::new(&env);
         for id in campaign_ids.iter() {
             results.push_back(Self::claim_campaign_funds(env.clone(), id.clone()));
@@ -879,6 +885,9 @@ impl CrowdfundingTrait for CrowdfundingContract {
     }
 
     fn get_campaigns(env: Env, ids: Vec<BytesN<32>>) -> Vec<CampaignDetails> {
+        if ids.len() > MAX_SINGLE_OP_ITEMS {
+            return Vec::new(&env);
+        }
         let mut results = Vec::new(&env);
         for id in ids.iter() {
             let campaign_key = (id,);
@@ -1041,6 +1050,9 @@ impl CrowdfundingTrait for CrowdfundingContract {
         // Validate multi-sig configuration if provided
         let multi_sig_config = match (required_signatures, signers) {
             (Some(req_sigs), Some(signer_list)) => {
+                if signer_list.len() > MAX_SINGLE_OP_ITEMS {
+                    return Err(CrowdfundingError::VectorLimitExceeded);
+                }
                 let signer_count = signer_list.len();
                 if req_sigs == 0 || req_sigs > signer_count {
                     return Err(CrowdfundingError::InvalidMultiSigConfig);
@@ -1088,6 +1100,7 @@ impl CrowdfundingTrait for CrowdfundingContract {
             is_private: false,
             duration,
             created_at: now,
+            application_deadline: deadline,
             token_address: platform_token,
             validator: creator.clone(),
         };
@@ -1464,6 +1477,9 @@ impl CrowdfundingTrait for CrowdfundingContract {
                 .instance()
                 .get(&contributors_key)
                 .unwrap_or(Vec::new(&env));
+            if contributors.len() >= MAX_SINGLE_OP_ITEMS {
+                return Err(CrowdfundingError::VectorLimitExceeded);
+            }
             contributors.push_back(contributor.clone());
             env.storage()
                 .instance()
@@ -2045,6 +2061,9 @@ impl CrowdfundingTrait for CrowdfundingContract {
         offset: u32,
         limit: u32,
     ) -> Result<Vec<PoolContribution>, CrowdfundingError> {
+        if limit > MAX_SINGLE_OP_ITEMS {
+            return Err(CrowdfundingError::VectorLimitExceeded);
+        }
         // Validate pool exist
         // Check if pool exists
         let pool_key = StorageKey::Pool(pool_id);
@@ -2116,6 +2135,10 @@ impl CrowdfundingTrait for CrowdfundingContract {
             .instance()
             .get(&pool_key)
             .ok_or(ValidationError::PoolNotFound)?;
+
+        if env.ledger().timestamp() > pool.application_deadline {
+            return Err(ValidationError::Unauthorized);
+        }
 
         let app_key = StorageKey::ScholarshipApplication(pool_id, applicant.clone());
 
@@ -2269,6 +2292,11 @@ impl ApplicationTrait for CrowdfundingContract {
             .instance()
             .get(&pool_key)
             .ok_or(CrowdfundingError::PoolNotFound)?;
+
+        // Deadline enforcement: deny late applications deterministically
+        if env.ledger().timestamp() > pool.application_deadline {
+            return Err(CrowdfundingError::DeadlinePassed);
+        }
 
         // Get pool metrics to calculate remaining funds
         let metrics_key = StorageKey::PoolMetrics(pool_id);
