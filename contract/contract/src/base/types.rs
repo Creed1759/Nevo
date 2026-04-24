@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, BytesN, String, Vec};
+use soroban_sdk::{contracttype, Address, Bytes, BytesN, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -39,6 +39,28 @@ pub struct PoolConfig {
     pub is_private: bool,
     pub duration: u64,
     pub created_at: u64,
+    pub token_address: Address,
+    /// The address authorized to approve or reject scholarship applications for this pool.
+    pub validator: Address,
+}
+
+/// Status of a scholarship application.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum ApplicationStatus {
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
+}
+
+/// A scholarship application submitted to a pool.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ScholarshipApplication {
+    pub pool_id: u64,
+    pub applicant: Address,
+    pub status: ApplicationStatus,
 }
 
 #[contracttype]
@@ -47,6 +69,15 @@ pub struct PoolMetadata {
     pub description: String,
     pub external_url: String,
     pub image_hash: String,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PoolDetails {
+    pub config: PoolConfig,
+    pub state: PoolState,
+    pub metrics: PoolMetrics,
+    pub metadata: PoolMetadata,
 }
 
 pub const MAX_DESCRIPTION_LENGTH: u32 = 500;
@@ -140,22 +171,48 @@ pub enum EventStatus {
     Completed = 2,
 }
 
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EventDetails {
+    pub id: BytesN<32>,
+    pub title: String,
+    pub creator: Address,
+    pub ticket_price: i128,
+    pub max_attendees: u32,
+    pub deadline: u64,
+    pub token: Address,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EventMetrics {
+    pub tickets_sold: u32,
+}
+
+impl Default for EventMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl EventMetrics {
+    /// Creates zero-initialized metrics for a new event.
+    pub fn new() -> Self {
+        Self { tickets_sold: 0 }
+    }
+}
+
 /// Represents the type of a ticket.
 /// Standard is the default type.
 #[contracttype]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TicketType {
     /// Standard ticket for general access.
+    #[default]
     Standard = 0,
     /// VIP ticket for premium access.
     VIP = 1,
-}
-
-impl Default for TicketType {
-    fn default() -> Self {
-        TicketType::Standard
-    }
 }
 
 #[contracttype]
@@ -243,6 +300,27 @@ pub struct PoolContribution {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ApplicationStatus {
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ApplicationDetails {
+    pub pool_id: u64,
+    pub applicant: Address,
+    pub credentials: Bytes,
+    pub requested_amount: i128,
+    pub submitted_at: u64,
+    pub status: ApplicationStatus,
+    pub reviewer: Option<Address>,
+    pub review_note: Option<String>,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StorageKey {
     Pool(u64),
     PoolState(u64),
@@ -253,6 +331,7 @@ pub enum StorageKey {
     Contribution(BytesN<32>, Address),
     PoolContribution(u64, Address),
     PoolContributors(u64),
+    Application(u64, Address),
 
     NextPoolId,
     IsPaused,
@@ -268,23 +347,43 @@ pub enum StorageKey {
     PlatformFees,
     GlobalTotalRaised,
     CampaignCancelled(BytesN<32>),
+    CampaignClaimed(BytesN<32>),
     EmergencyContact,
     CampaignFeeHistory(BytesN<32>),
     Blacklist(Address),
-
     ReentrancyLock(u64),
     EmergencyWithdrawalLock,
     PoolCreator(u64),
+    EventFeeTreasury,
+    PlatformFeeBps,
+    // Per-pool revenue split: tokens destined for the event creator
+    EventPool(u64),
+    // Per-pool revenue split: tokens accumulated as platform fee
+    EventPlatformFees(u64),
+    // Track if someone bought a ticket
+    UserTicket(u64, Address),
+    // Event details keyed by event id
+    Event(BytesN<32>),
+    // track if a pool has been claimed
+    PoolClaimed(u64),
+    // Per-event metrics (tickets sold, etc.)
+    EventMetrics(BytesN<32>),
+    // Scholarship application keyed by (pool_id, applicant)
+    ScholarshipApplication(u64, Address),
+    // Locked token balance deposited by the sponsor at pool creation
+    PoolBalance(u64),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use soroban_sdk::Env;
+    use soroban_sdk::{testutils::Address as _, Address, Env};
 
     #[test]
     fn pool_config_validation_success() {
         let env = Env::default();
+        let token = Address::generate(&env);
+        let validator = Address::generate(&env);
         let cfg = PoolConfig {
             name: String::from_str(&env, "Education Fund"),
             description: String::from_str(&env, "Fund for student education materials"),
@@ -293,6 +392,8 @@ mod tests {
             is_private: false,
             duration: 30 * 24 * 60 * 60,
             created_at: 1,
+            token_address: token,
+            validator,
         };
 
         cfg.validate();
@@ -302,6 +403,8 @@ mod tests {
     #[should_panic]
     fn pool_config_invalid_target_amount_panics() {
         let env = Env::default();
+        let token = Address::generate(&env);
+        let validator = Address::generate(&env);
         let cfg = PoolConfig {
             name: String::from_str(&env, "Invalid Target"),
             description: String::from_str(&env, "Description"),
@@ -310,6 +413,8 @@ mod tests {
             is_private: false,
             duration: 30 * 24 * 60 * 60,
             created_at: 1,
+            token_address: token,
+            validator,
         };
 
         cfg.validate();
@@ -436,5 +541,61 @@ mod tests {
     #[test]
     fn ticket_type_default_is_standard() {
         assert_eq!(TicketType::default(), TicketType::Standard);
+    }
+
+    #[test]
+    fn event_details_instantiation() {
+        use soroban_sdk::testutils::Address as _;
+        let env = Env::default();
+        let creator = soroban_sdk::Address::generate(&env);
+        let token = soroban_sdk::Address::generate(&env);
+        let id = soroban_sdk::BytesN::from_array(&env, &[1u8; 32]);
+        let event = EventDetails {
+            id: id.clone(),
+            title: String::from_str(&env, "Nevo Launch"),
+            creator: creator.clone(),
+            ticket_price: 500,
+            max_attendees: 100,
+            deadline: 1_700_000_000,
+            token: token.clone(),
+        };
+        assert_eq!(event.id, id);
+        assert_eq!(event.ticket_price, 500);
+        assert_eq!(event.max_attendees, 100);
+        assert_eq!(event.deadline, 1_700_000_000);
+        assert_eq!(event.creator, creator);
+        assert_eq!(event.token, token);
+    }
+
+    #[test]
+    fn pool_details_instantiation() {
+        let env = Env::default();
+        let creator = Address::generate(&env);
+        let token = Address::generate(&env);
+        let config = PoolConfig {
+            name: String::from_str(&env, "Test Pool"),
+            description: String::from_str(&env, "A test scholarship pool"),
+            target_amount: 1000,
+            min_contribution: 10,
+            is_private: false,
+            duration: 86400,
+            created_at: 1234567890,
+            token_address: token.clone(),
+        };
+        let metadata = PoolMetadata {
+            description: String::from_str(&env, "Metadata description"),
+            external_url: String::from_str(&env, "https://example.com"),
+            image_hash: String::from_str(&env, "hash123"),
+        };
+        let details = PoolDetails {
+            config: config.clone(),
+            state: PoolState::Active,
+            metrics: PoolMetrics::new(),
+            metadata: metadata.clone(),
+        };
+        assert_eq!(details.config, config);
+        assert_eq!(details.state, PoolState::Active);
+        assert_eq!(details.metrics.total_raised, 0);
+        assert_eq!(details.metadata, metadata);
     }
 }

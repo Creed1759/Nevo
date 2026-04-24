@@ -11,7 +11,7 @@ use crate::{
     crowdfunding::{CrowdfundingContract, CrowdfundingContractClient},
 };
 
-fn setup_test(env: &Env) -> (CrowdfundingContractClient, Address, Address) {
+fn setup_test(env: &Env) -> (CrowdfundingContractClient<'_>, Address, Address) {
     env.mock_all_auths();
     let contract_id = env.register(CrowdfundingContract, ());
     let client = CrowdfundingContractClient::new(env, &contract_id);
@@ -29,7 +29,7 @@ fn setup_test(env: &Env) -> (CrowdfundingContractClient, Address, Address) {
 #[test]
 fn test_pool_remaining_time_future() {
     let env = Env::default();
-    let (client, _, _) = setup_test(&env);
+    let (client, _, token_address) = setup_test(&env);
 
     // Pin the clock to a known value
     env.ledger().set_timestamp(1_000_000);
@@ -41,8 +41,11 @@ fn test_pool_remaining_time_future() {
         target_amount: 1_000_000,
         min_contribution: 0,
         is_private: false,
+        token_address: token_address.clone(),
+            validator: admin.clone(),
         duration: 500,
         created_at: env.ledger().timestamp(),
+        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &config);
@@ -54,7 +57,7 @@ fn test_pool_remaining_time_future() {
 #[test]
 fn test_pool_remaining_time_expired_returns_zero() {
     let env = Env::default();
-    let (client, _, _) = setup_test(&env);
+    let (client, _, token_address) = setup_test(&env);
 
     env.ledger().set_timestamp(1_000_000);
 
@@ -65,8 +68,11 @@ fn test_pool_remaining_time_expired_returns_zero() {
         target_amount: 1_000_000,
         min_contribution: 0,
         is_private: false,
+        token_address: token_address.clone(),
+            validator: admin.clone(),
         duration: 100,
         created_at: env.ledger().timestamp(),
+        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &config);
@@ -81,7 +87,7 @@ fn test_pool_remaining_time_expired_returns_zero() {
 #[test]
 fn test_pool_remaining_time_not_found() {
     let env = Env::default();
-    let (client, _, _) = setup_test(&env);
+    let (client, _, _token_address) = setup_test(&env);
 
     let result = client.try_get_pool_remaining_time(&999u64);
     assert_eq!(result, Err(Ok(CrowdfundingError::PoolNotFound)));

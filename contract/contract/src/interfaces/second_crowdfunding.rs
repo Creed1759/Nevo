@@ -1,3 +1,5 @@
+#![cfg(test)]
+
 use soroban_sdk::{Address, BytesN, Env, String};
 
 use crate::base::errors::SecondCrowdfundingError;
@@ -10,6 +12,7 @@ use crate::base::errors::SecondCrowdfundingError;
 /// when you need to distinguish string-length violations from other contract
 /// errors — for example, in unit-tests that verify title/metadata length
 /// limits without going through the Soroban client dispatcher.
+#[allow(dead_code)]
 pub trait SecondCrowdfundingTrait {
     /// Validates the campaign title length and, if valid, creates the campaign.
     ///
@@ -24,5 +27,17 @@ pub trait SecondCrowdfundingTrait {
         goal: i128,
         deadline: u64,
         token_address: Address,
+    ) -> Result<(), SecondCrowdfundingError>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn create_event(
+        env: Env,
+        id: BytesN<32>,
+        title: String,
+        creator: Address,
+        ticket_price: i128,
+        max_attendees: u32,
+        deadline: u64,
+        token: Address,
     ) -> Result<(), SecondCrowdfundingError>;
 }

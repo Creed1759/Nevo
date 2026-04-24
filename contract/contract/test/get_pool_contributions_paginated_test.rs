@@ -17,9 +17,9 @@ fn create_token_contract<'a>(env: &Env, admin: &Address) -> token::StellarAssetC
 fn setup_contract(
     env: &Env,
 ) -> (
-    CrowdfundingContractClient,
+    CrowdfundingContractClient<'_>,
     Address,
-    token::StellarAssetClient,
+    token::StellarAssetClient<'_>,
 ) {
     let contract_id = env.register(CrowdfundingContract, ());
     let client = CrowdfundingContractClient::new(env, &contract_id);
@@ -48,8 +48,11 @@ fn test_get_pool_contributions_paginated_with_10_contributors() {
         target_amount: 10_000_000,
         min_contribution: 1000,
         is_private: false,
+        token_address: token_client.address.clone(),
+            validator: admin.clone(),
         duration: 30 * 24 * 60 * 60, // 30 days
         created_at: env.ledger().timestamp(),
+        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &pool_config);
@@ -115,7 +118,7 @@ fn test_get_pool_contributions_paginated_empty_pool() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, _admin, _token_client) = setup_contract(&env);
+    let (client, _admin, token_client) = setup_contract(&env);
 
     // Create a pool with no contributions
     let creator = Address::generate(&env);
@@ -125,8 +128,11 @@ fn test_get_pool_contributions_paginated_empty_pool() {
         target_amount: 5_000_000,
         min_contribution: 1000,
         is_private: false,
+        token_address: token_client.address.clone(),
+            validator: admin.clone(),
         duration: 30 * 24 * 60 * 60,
         created_at: env.ledger().timestamp(),
+        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &pool_config);
@@ -163,8 +169,11 @@ fn test_get_pool_contributions_paginated_single_contributor_multiple_contributio
         target_amount: 10_000_000,
         min_contribution: 1000,
         is_private: false,
+        token_address: token_client.address.clone(),
+            validator: admin.clone(),
         duration: 30 * 24 * 60 * 60,
         created_at: env.ledger().timestamp(),
+        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &pool_config);

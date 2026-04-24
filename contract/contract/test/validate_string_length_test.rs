@@ -10,7 +10,7 @@ use crate::{
 
 fn setup(env: &Env) -> (CrowdfundingContractClient<'_>, Address) {
     env.mock_all_auths();
-    let contract_id = env.register_contract(None, CrowdfundingContract);
+    let contract_id = env.register(CrowdfundingContract, ());
     let client = CrowdfundingContractClient::new(env, &contract_id);
 
     let admin = Address::generate(env);
