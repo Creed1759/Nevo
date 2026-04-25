@@ -185,3 +185,8 @@ pub fn milestone_unlocked(
     let topics = (Symbol::new(env, "milestone_unlocked"), pool_id, unlocked_by);
     env.events().publish(topics, (milestone_index, performance_override));
 }
+
+pub fn school_removed(env: &Env, admin: Address, school_addr: Address, pool_id: u64) {
+    let topics = (Symbol::new(env, "school_removed"), admin, school_addr);
+    env.events().publish(topics, pool_id);
+}
