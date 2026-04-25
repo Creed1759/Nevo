@@ -21,6 +21,7 @@ fn setup_contract(
     Address,
     token::StellarAssetClient<'_>,
 ) {
+    env.mock_all_auths();
     let contract_id = env.register(CrowdfundingContract, ());
     let client = CrowdfundingContractClient::new(env, &contract_id);
 
@@ -30,6 +31,14 @@ fn setup_contract(
 
     client.initialize(&admin, &token_client.address, &0);
 
+    // Register admin as a default validator for tests
+    client.register_school(
+        &admin,
+        &String::from_str(env, "Test University"),
+        &String::from_str(env, "US"),
+        &String::from_str(env, "ACC-001"),
+    );
+
     (client, admin, token_client)
 }
 
@@ -38,7 +47,7 @@ fn test_get_pool_contributions_paginated_with_10_contributors() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, _admin, token_client) = setup_contract(&env);
+    let (client, admin, token_client) = setup_contract(&env);
 
     // Create a pool
     let creator = Address::generate(&env);
@@ -52,7 +61,6 @@ fn test_get_pool_contributions_paginated_with_10_contributors() {
         validator: admin.clone(),
         duration: 30 * 24 * 60 * 60, // 30 days
         created_at: env.ledger().timestamp(),
-        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &pool_config);
@@ -118,7 +126,7 @@ fn test_get_pool_contributions_paginated_empty_pool() {
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, _admin, token_client) = setup_contract(&env);
+    let (client, admin, token_client) = setup_contract(&env);
 
     // Create a pool with no contributions
     let creator = Address::generate(&env);
@@ -132,7 +140,6 @@ fn test_get_pool_contributions_paginated_empty_pool() {
         validator: admin.clone(),
         duration: 30 * 24 * 60 * 60,
         created_at: env.ledger().timestamp(),
-        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &pool_config);
@@ -159,7 +166,7 @@ fn test_get_pool_contributions_paginated_single_contributor_multiple_contributio
     let env = Env::default();
     env.mock_all_auths();
 
-    let (client, _admin, token_client) = setup_contract(&env);
+    let (client, admin, token_client) = setup_contract(&env);
 
     // Create a pool
     let creator = Address::generate(&env);
@@ -173,7 +180,6 @@ fn test_get_pool_contributions_paginated_single_contributor_multiple_contributio
         validator: admin.clone(),
         duration: 30 * 24 * 60 * 60,
         created_at: env.ledger().timestamp(),
-        validator: creator.clone(),
     };
 
     let pool_id = client.create_pool(&creator, &pool_config);

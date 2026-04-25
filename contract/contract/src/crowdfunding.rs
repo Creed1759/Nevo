@@ -1,9 +1,6 @@
 #![allow(deprecated)]
 use soroban_sdk::{contract, contractimpl, Address, Bytes, BytesN, Env, String, Vec};
 
-use crate::base::errors::SecondCrowdfundingError;
-#[cfg(test)]
-use crate::base::types::{EventDetails, EventMetrics};
 use crate::base::{
     errors::{CrowdfundingError, SecondCrowdfundingError, ValidationError},
     events,
@@ -11,10 +8,11 @@ use crate::base::{
         acquire_emergency_lock, reentrancy_lock_logic, release_emergency_lock, release_pool_lock,
     },
     types::{
-        ApplicationStatus, CampaignDetails, CampaignLifecycleStatus, CampaignMetrics, Contribution,
-        EmergencyWithdrawal, EventDetails, EventMetrics, MultiSigConfig, PoolConfig,
-        PoolContribution, PoolMetadata, PoolMetrics, PoolState, ScholarshipApplication, StorageKey,
-        MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH, MAX_SINGLE_OP_ITEMS, MAX_STRING_LENGTH, MAX_URL_LENGTH,
+        ApplicationDetails, ApplicationStatus, CampaignDetails, CampaignLifecycleStatus,
+        CampaignMetrics, Contribution, EmergencyWithdrawal, EventDetails, EventMetrics,
+        MultiSigConfig, PoolConfig, PoolContribution, PoolMetadata, PoolMetrics, PoolState,
+        ScholarshipApplication, SchoolRegistry, StorageKey, MAX_DESCRIPTION_LENGTH, MAX_HASH_LENGTH,
+        MAX_SINGLE_OP_ITEMS, MAX_STRING_LENGTH, MAX_URL_LENGTH,
     },
 };
 use crate::interfaces::application::ApplicationTrait;
@@ -922,6 +920,11 @@ impl CrowdfundingTrait for CrowdfundingContract {
         // Validate config
         config.validate();
 
+        // Enforce that the designated validator is a registered school.
+        if !crate::interfaces::registry::is_validator_registered(&env, &config.validator) {
+            return Err(CrowdfundingError::UnrecognizedValidator);
+        }
+
         // Evaluate and charge creation fee
         let fee_key = StorageKey::CreationFee;
         let creation_fee: i128 = env.storage().instance().get(&fee_key).unwrap_or(0);
@@ -1144,7 +1147,6 @@ impl CrowdfundingTrait for CrowdfundingContract {
             is_private: false,
             duration,
             created_at: now,
-            application_deadline: deadline,
             token_address: platform_token,
             validator: creator.clone(),
         };
@@ -2294,10 +2296,6 @@ impl CrowdfundingTrait for CrowdfundingContract {
             .get(&pool_key)
             .ok_or(ValidationError::PoolNotFound)?;
 
-        if env.ledger().timestamp() > pool.application_deadline {
-            return Err(ValidationError::Unauthorized);
-        }
-
         let app_key = StorageKey::ScholarshipApplication(pool_id, applicant.clone());
 
         // Prevent duplicate applications
@@ -2402,6 +2400,34 @@ impl CrowdfundingTrait for CrowdfundingContract {
             .get(&app_key)
             .ok_or(ValidationError::ApplicationNotFound)
     }
+
+    fn register_school(
+        env: Env,
+        school: Address,
+        name: String,
+        country: String,
+        accreditation_id: String,
+    ) -> Result<(), CrowdfundingError> {
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&StorageKey::Admin)
+            .ok_or(CrowdfundingError::NotInitialized)?;
+        admin.require_auth();
+
+        let entry = crate::base::types::SchoolRegistry {
+            name,
+            country,
+            accreditation_id,
+        };
+        crate::interfaces::registry::register_school(&env, &school, &entry);
+        events::school_registered(&env, school);
+        Ok(())
+    }
+
+    fn is_validator_registered(env: Env, validator: Address) -> bool {
+        crate::interfaces::registry::is_validator_registered(&env, &validator)
+    }
 }
 
 #[contractimpl]
@@ -2450,11 +2476,6 @@ impl ApplicationTrait for CrowdfundingContract {
             .instance()
             .get(&pool_key)
             .ok_or(CrowdfundingError::PoolNotFound)?;
-
-        // Deadline enforcement: deny late applications deterministically
-        if env.ledger().timestamp() > pool.application_deadline {
-            return Err(CrowdfundingError::DeadlinePassed);
-        }
 
         // Get pool metrics to calculate remaining funds
         let metrics_key = StorageKey::PoolMetrics(pool_id);

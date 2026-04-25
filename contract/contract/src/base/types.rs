@@ -119,6 +119,18 @@ pub struct PoolDetails {
     pub metadata: PoolMetadata,
 }
 
+/// Verification metadata for a registered school/university validator.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SchoolRegistry {
+    /// Human-readable name of the institution.
+    pub name: String,
+    /// Country or jurisdiction of the institution.
+    pub country: String,
+    /// Arbitrary verification reference (e.g. accreditation ID).
+    pub accreditation_id: String,
+}
+
 pub const MAX_DESCRIPTION_LENGTH: u32 = 500;
 /// The const MAX URL LENGTH.
 pub const MAX_URL_LENGTH: u32 = 200;
@@ -156,12 +168,6 @@ impl PoolConfig {
 
         // Duration must be strictly positive (non-zero)
         assert!(self.duration > 0, "duration must be > 0");
-
-        // application_deadline must not be before pool creation time
-        assert!(
-            self.application_deadline >= self.created_at,
-            "application_deadline must be >= created_at"
-        );
     }
 }
 
@@ -565,6 +571,8 @@ pub enum StorageKey {
     PoolBalance(u64),
     // Sum of requested_amount for all Approved applications on a pool
     PoolAllocated(u64),
+    /// Maps a validator/school address to its registry entry.
+    SchoolRegistry(Address),
 }
 
 #[cfg(test)]
@@ -765,6 +773,7 @@ mod tests {
         let env = Env::default();
         let creator = Address::generate(&env);
         let token = Address::generate(&env);
+        let validator = Address::generate(&env);
         let config = PoolConfig {
             name: String::from_str(&env, "Test Pool"),
             description: String::from_str(&env, "A test scholarship pool"),
@@ -774,6 +783,7 @@ mod tests {
             duration: 86400,
             created_at: 1234567890,
             token_address: token.clone(),
+            validator,
         };
         let metadata = PoolMetadata {
             description: String::from_str(&env, "Metadata description"),

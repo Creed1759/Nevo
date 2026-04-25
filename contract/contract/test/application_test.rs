@@ -21,10 +21,19 @@ fn setup(env: &Env) -> (CrowdfundingContractClient<'_>, Address, Address) {
         .address();
 
     client.initialize(&admin, &token_address, &0);
+
+    // Register admin as a default validator for tests
+    client.register_school(
+        &admin,
+        &String::from_str(env, "Test University"),
+        &String::from_str(env, "US"),
+        &String::from_str(env, "ACC-001"),
+    );
+
     (client, admin, token_address)
 }
 
-fn create_pool(env: &Env, client: &CrowdfundingContractClient<'_>, token_address: &Address) -> u64 {
+fn create_pool(env: &Env, client: &CrowdfundingContractClient<'_>, admin: &Address, token_address: &Address) -> u64 {
     let creator = Address::generate(env);
     let config = PoolConfig {
         name: String::from_str(env, "Scholarship Fund"),
@@ -44,9 +53,9 @@ fn create_pool(env: &Env, client: &CrowdfundingContractClient<'_>, token_address
 #[test]
 fn test_apply_for_scholarship_success() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[1, 2, 3, 4]);
     let requested_amount = 5_000i128;
@@ -62,9 +71,9 @@ fn test_apply_for_scholarship_success() {
 #[test]
 fn test_approve_application_changes_status() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let validator = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[5, 6, 7]);
@@ -86,9 +95,9 @@ fn test_approve_application_changes_status() {
 #[test]
 fn test_reject_application_changes_status() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let validator = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[9, 10, 11]);
@@ -110,9 +119,9 @@ fn test_reject_application_changes_status() {
 #[test]
 fn test_apply_for_scholarship_empty_credentials_fails() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[]);
     let requested_amount = 5_000i128;
@@ -128,9 +137,9 @@ fn test_apply_for_scholarship_empty_credentials_fails() {
 #[test]
 fn test_apply_for_scholarship_duplicate_application_fails() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[1, 2, 3, 4]);
     let requested_amount = 5_000i128;
@@ -150,9 +159,9 @@ fn test_apply_for_scholarship_duplicate_application_fails() {
 #[test]
 fn test_apply_for_scholarship_exceeds_remaining_funds_fails() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[1, 2, 3, 4]);
 
@@ -167,9 +176,9 @@ fn test_apply_for_scholarship_exceeds_remaining_funds_fails() {
 #[test]
 fn test_apply_for_scholarship_zero_amount_fails() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[1, 2, 3, 4]);
     let requested_amount = 0i128;
@@ -182,9 +191,9 @@ fn test_apply_for_scholarship_zero_amount_fails() {
 #[test]
 fn test_apply_for_scholarship_negative_amount_fails() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[1, 2, 3, 4]);
     let requested_amount = -1000i128;
@@ -197,9 +206,9 @@ fn test_apply_for_scholarship_negative_amount_fails() {
 #[test]
 fn test_apply_for_scholarship_exactly_remaining_funds_succeeds() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
     let applicant = Address::generate(&env);
     let credentials = Bytes::from_array(&env, &[1, 2, 3, 4]);
 
@@ -216,9 +225,9 @@ fn test_apply_for_scholarship_exactly_remaining_funds_succeeds() {
 #[test]
 fn test_apply_for_scholarship_multiple_applicants_different_amounts() {
     let env = Env::default();
-    let (client, _, token_address) = setup(&env);
+    let (client, admin, token_address) = setup(&env);
 
-    let pool_id = create_pool(&env, &client, &token_address);
+    let pool_id = create_pool(&env, &client, &admin, &token_address);
 
     let applicant1 = Address::generate(&env);
     let applicant2 = Address::generate(&env);
