@@ -1,5 +1,26 @@
 use soroban_sdk::{contracttype, Address, Bytes, BytesN, String, Vec};
 
+/// Status of a single milestone payout.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[repr(u32)]
+pub enum MilestoneStatus {
+    Pending = 0,
+    Claimed = 1,
+}
+
+/// A single time-locked payout milestone attached to a scholarship pool.
+#[contracttype]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Milestone {
+    /// Unix timestamp after which this milestone may be claimed.
+    pub unlock_date: u64,
+    /// Token amount released when this milestone is claimed.
+    pub amount: i128,
+    /// Whether this milestone has already been disbursed.
+    pub status: MilestoneStatus,
+}
+
 /// Documentation for this item.
 #[allow(missing_docs)]
 #[contracttype]
@@ -70,10 +91,14 @@ pub struct PoolConfig {
     pub duration: u64,
     /// The created at.
     pub created_at: u64,
+    /// Deadline after which new applications are no longer accepted.
+    pub application_deadline: u64,
     /// The token address.
     pub token_address: Address,
     /// The address authorized to approve or reject scholarship applications for this pool.
     pub validator: Address,
+    /// Ordered list of time-locked milestone payouts for this pool.
+    pub milestones: Vec<Milestone>,
 }
 
 /// Status of a scholarship application.
@@ -565,6 +590,8 @@ pub enum StorageKey {
     PoolBalance(u64),
     // Sum of requested_amount for all Approved applications on a pool
     PoolAllocated(u64),
+    // Ordered milestone payouts for a pool
+    PoolMilestones(u64),
 }
 
 #[cfg(test)]
@@ -585,8 +612,10 @@ mod tests {
             is_private: false,
             duration: 30 * 24 * 60 * 60,
             created_at: 1,
+            application_deadline: 1,
             token_address: token,
             validator,
+            milestones: soroban_sdk::Vec::new(&env),
         };
 
         cfg.validate();
@@ -606,8 +635,10 @@ mod tests {
             is_private: false,
             duration: 30 * 24 * 60 * 60,
             created_at: 1,
+            application_deadline: 1,
             token_address: token,
             validator,
+            milestones: soroban_sdk::Vec::new(&env),
         };
 
         cfg.validate();
@@ -773,7 +804,10 @@ mod tests {
             is_private: false,
             duration: 86400,
             created_at: 1234567890,
+            application_deadline: 1234567890,
             token_address: token.clone(),
+            validator: creator.clone(),
+            milestones: soroban_sdk::Vec::new(&env),
         };
         let metadata = PoolMetadata {
             description: String::from_str(&env, "Metadata description"),
