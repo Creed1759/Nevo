@@ -1,7 +1,8 @@
 # Rust build artifacts
 target/
 **/target/
-
+test_snapshots/
+**/test_snapshots/
 # Local Soroban/Stellar settings
 .soroban/
 .stellar/
