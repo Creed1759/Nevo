@@ -1,3 +1,4 @@
+mod active_pool_tracker_test;
 // mod blacklist_test; // Features not yet implemented
 mod application_test;
 mod asset_discount_test;
@@ -30,6 +31,8 @@ mod test;
 mod unpause_pool_test;
 // mod update_pool_metadata_test; // Features not yet implemented
 // mod upgrade_contract_test; // broken on missing hello_world.wasm
+mod application_test;
+mod unpause_pool_test;
 mod validate_string_length_test;
 mod verify_cause;
 mod withdraw_platform_fees_test;

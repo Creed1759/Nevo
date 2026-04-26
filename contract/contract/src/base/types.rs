@@ -380,6 +380,8 @@ pub enum StorageKey {
     PoolBalance(u64),
     // Sum of requested_amount for all Approved applications on a pool
     PoolAllocated(u64),
+    // O(1) tracker: Vec<u64> of currently-active pool IDs
+    ActivePoolTracker,
     /// Maps a validator/school address to its registry entry.
     SchoolRegistry(Address),
     // Ordered milestone payouts for a pool
