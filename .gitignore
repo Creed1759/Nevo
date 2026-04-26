@@ -36,8 +36,8 @@ dist/
 *.txt
 *.md
 !README.md
-!contribution.md
-!agents.md
+!Contribution.md
+!Agents.md
 
 # IDE and editor files
 .vscode/
