@@ -102,6 +102,44 @@ Before making any changes, the agent must:
 
 ---
 
+## Handling Dependencies & Unimplemented Features
+
+### Scenario 1: Feature Not Implemented
+
+If the current issue requires a feature (from another GitHub issue) that hasn't been implemented yet:
+
+* **Do NOT wait** for the other issue to be completed
+* Instead, create a **minimal mock** of only what is needed
+* The mock should:
+  * Provide exactly the API or interface required
+  * Return hardcoded or placeholder data
+  * Be clearly marked as a mock (in comments, type names like `MockService`, or function names)
+  * NOT attempt to implement the full feature from the dependent issue
+* Concrete examples:
+  * **Backend API dependency**: Create an endpoint that returns hardcoded JSON data
+  * **Contract function dependency**: Create a function that returns sample contract data
+  * **External service dependency**: Mock the API responses with hardcoded data
+  * **Database queries**: Mock the query results with sample data
+
+### Scenario 2: Issue Explicitly Depends on Another Issue
+
+When an issue requires functionality explicitly linked in another GitHub issue:
+
+* Create a **minimal mock version** of that functionality
+* The mock only needs to provide the minimal data or behavior the current issue requires
+* Clearly mark it: `// TODO: Replace with real implementation from issue #XYZ`
+* Do NOT implement the full scope of the dependent issue
+* Once the dependent issue is completed, the real implementation will replace the mock
+
+### Key Points
+
+* Agents should **complete issues independently** without waiting for dependencies
+* Mocks are **temporary and clearly marked**
+* Focus on delivering the feature's functionality using mock data
+* Maintainers will handle replacing mocks with real implementations later
+
+---
+
 ## Build & Validation Requirements
 
 Before completing a task, the agent must ensure:

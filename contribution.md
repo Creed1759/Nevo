@@ -113,6 +113,44 @@ When working in the `Contract` folder:
 
 ---
 
+## Handling Dependencies & Unimplemented Features
+
+### Scenario 1: Feature Not Implemented
+
+If your issue depends on a feature (from another GitHub issue) that hasn't been implemented yet:
+
+* **Do NOT wait** for the other issue to be completed
+* Instead, create a **minimal mock** of only what you need
+* Your mock should:
+  * Provide exactly the API or interface your feature requires
+  * Return hardcoded or placeholder data
+  * Be clearly marked as a mock (use comments, type names like `MockService`, or clear naming)
+  * NOT attempt to implement the full scope of the dependent feature
+* Concrete examples:
+  * **Backend API dependency**: Create an endpoint that returns hardcoded JSON data
+  * **Contract function dependency**: Create a function that returns sample contract data
+  * **External service dependency**: Mock the API responses with hardcoded data
+  * **Database queries**: Mock the query results with sample data
+
+### Scenario 2: Issue Explicitly Depends on Another Issue
+
+When your issue is linked to another GitHub issue:
+
+* Create a **minimal mock version** of that dependency
+* The mock only needs to provide the minimal data or behavior your feature requires
+* Clearly mark it: `// TODO: Replace with real implementation from issue #XYZ`
+* Do NOT implement the full scope of the dependent issue—only mock what you need
+* When the dependency is complete, maintainers will replace your mock with the real implementation
+
+### The Bottom Line
+
+* **You can complete your issue independently** without waiting for dependencies
+* **Mocks are temporary**—they're clearly marked and will be replaced later
+* **Focus on your feature**—use mock data to make it work
+* **Maintainers handle cleanup**—they'll replace mocks with real implementations when dependencies are ready
+
+---
+
 ## Code Quality
 
 * Follow the existing code style
