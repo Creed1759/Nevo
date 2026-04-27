@@ -15,7 +15,7 @@ fn test_create_pool() {
     let creator = Address::generate(&env);
     let title = String::from_str(&env, "Emergency Relief Fund");
     let description = String::from_str(&env, "Helping those in need");
-    let goal: u128 = 1_000_000_000; // 100 XLM in stroops
+    let goal: u128 = 1_000_000_000;
 
     let pool_id = client.create_pool(&creator, &title, &description, &goal);
 
@@ -39,12 +39,11 @@ fn test_donate() {
     let donor = Address::generate(&env);
     let title = String::from_str(&env, "Educational Scholarship");
     let description = String::from_str(&env, "Support for students");
-    let goal: u128 = 10_000_000_000; // 1000 XLM
+    let goal: u128 = 10_000_000_000;
 
     let pool_id = client.create_pool(&creator, &title, &description, &goal);
 
-    // Donate to the pool
-    let donation_amount: u128 = 100_000_000; // 10 XLM
+    let donation_amount: u128 = 100_000_000;
     client.donate(&pool_id, &donor, &donation_amount);
 
     let pool = client.get_pool(&pool_id);
@@ -66,10 +65,7 @@ fn test_multiple_donations() {
 
     let pool_id = client.create_pool(&creator, &title, &description, &goal);
 
-    // First donation
     client.donate(&pool_id, &donor1, &100_000_000);
-
-    // Second donation from different donor
     client.donate(&pool_id, &donor2, &200_000_000);
 
     let pool = client.get_pool(&pool_id);
@@ -88,8 +84,6 @@ fn test_close_pool() {
     let goal: u128 = 1_000_000_000;
 
     let pool_id = client.create_pool(&creator, &title, &description, &goal);
-
-    // Close the pool
     client.close_pool(&pool_id);
 
     let pool = client.get_pool(&pool_id);
@@ -112,7 +106,6 @@ fn test_donate_to_closed_pool() {
     let pool_id = client.create_pool(&creator, &title, &description, &goal);
     client.close_pool(&pool_id);
 
-    // This should panic
     client.donate(&pool_id, &donor, &100_000_000);
 }
 

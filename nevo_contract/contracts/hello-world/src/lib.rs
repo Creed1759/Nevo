@@ -24,7 +24,9 @@ pub struct Contract;
 
 #[contractimpl]
 impl Contract {
-    /// Create a new donation pool
+    // ─── Pool Management ─────────────────────────────────────────────────────
+
+    /// Create a new donation / sponsorship pool.
     pub fn create_pool(
         env: Env,
         creator: Address,
@@ -34,7 +36,6 @@ impl Contract {
     ) -> u32 {
         // creator.require_auth();  // TODO: Enable auth validation in production
 
-        // Get the next pool ID
         let pool_count_key = Symbol::new(&env, POOL_COUNT);
         let mut pool_count: u32 = env
             .storage()
@@ -50,36 +51,33 @@ impl Contract {
 
         env.storage()
             .persistent()
-            .set(&pool_key, &(creator.clone(), goal, 0u128, false));
+            .set(&pool_id, &(creator.clone(), goal, 0u128, false));
 
         env.storage().persistent().set(&pool_count_key, &pool_count);
 
         pool_id
     }
 
-    /// Donate to an existing pool
+    /// Donate to an existing pool.
     pub fn donate(env: Env, pool_id: u32, donor: Address, amount: u128) {
         // donor.require_auth();  // TODO: Enable auth validation in production
 
-        let pool_key = pool_id;
         let pool_data: (Address, u128, u128, bool) = env
             .storage()
             .persistent()
-            .get::<_, (Address, u128, u128, bool)>(&pool_key)
+            .get::<_, (Address, u128, u128, bool)>(&pool_id)
             .expect("Pool not found");
 
         if pool_data.3 {
             panic!("Pool is closed");
         }
 
-        // Update pool balance
         let new_collected = pool_data.2 + amount;
         env.storage().persistent().set(
             &pool_key,
             &(pool_data.0.clone(), pool_data.1, new_collected, pool_data.3),
         );
 
-        // Record the donation (using a simple counter approach)
         let donor_index: u32 = env
             .storage()
             .persistent()
@@ -91,35 +89,33 @@ impl Contract {
             .set(&(pool_id, "d_count"), &(donor_index + 1));
     }
 
-    /// Get pool information as a tuple (id, creator, goal, collected, is_closed)
+    /// Get pool information as a tuple (id, creator, goal, collected, is_closed).
     pub fn get_pool(env: Env, pool_id: u32) -> (u32, Address, u128, u128, bool) {
-        let pool_key = pool_id;
         let pool_data: (Address, u128, u128, bool) = env
             .storage()
             .persistent()
-            .get::<_, (Address, u128, u128, bool)>(&pool_key)
+            .get::<_, (Address, u128, u128, bool)>(&pool_id)
             .expect("Pool not found");
 
         (pool_id, pool_data.0, pool_data.1, pool_data.2, pool_data.3)
     }
 
-    /// Close a donation pool
+    /// Close a donation pool.
     pub fn close_pool(env: Env, pool_id: u32) {
-        let pool_key = pool_id;
         let pool_data: (Address, u128, u128, bool) = env
             .storage()
             .persistent()
-            .get::<_, (Address, u128, u128, bool)>(&pool_key)
+            .get::<_, (Address, u128, u128, bool)>(&pool_id)
             .expect("Pool not found");
 
         // pool_data.0.require_auth();  // TODO: Enable auth validation in production
 
         env.storage()
             .persistent()
-            .set(&pool_key, &(pool_data.0, pool_data.1, pool_data.2, true));
+            .set(&pool_id, &(pool_data.0, pool_data.1, pool_data.2, true));
     }
 
-    /// Get the total number of pools
+    /// Get the total number of pools.
     pub fn get_pool_count(env: Env) -> u32 {
         let pool_count_key = Symbol::new(&env, POOL_COUNT);
         env.storage()
