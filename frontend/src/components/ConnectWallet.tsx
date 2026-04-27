@@ -1,60 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getPublicKey, connect, disconnect } from "../app/stellar-wallets-kit";
-import { getAccountBalances, AccountBalances } from "../lib/stellar";
+import { useEffect } from "react";
 import { LogOut, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { useWalletStore } from "@/store";
 
 export default function ConnectWallet() {
-  const [publicKey, setPublicKey] = useState<string | null>(null);
-  const [balances, setBalances] = useState<AccountBalances | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { publicKey, balances, loading, initialize, connectWallet, disconnectWallet } =
+    useWalletStore();
 
-  async function updateState(key: string | null) {
-    if (key) {
-      setPublicKey(key);
-      const bals = await getAccountBalances(key);
-      setBalances(bals);
-    } else {
-      setPublicKey(null);
-      setBalances(null);
-    }
-    setLoading(false);
-  }
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
-  async function showConnected() {
-    const key = await getPublicKey();
-    if (key) {
-      await updateState(key);
-      toast.success("Wallet connected successfully!");
-    }
+  async function handleConnect() {
+    await connectWallet(() => toast.success("Wallet connected successfully!"));
   }
 
   async function handleDisconnect() {
-    await disconnect(async () => {
-      setPublicKey(null);
-      setBalances(null);
-      setLoading(false);
-      toast.info("Wallet disconnected.");
-    });
+    await disconnectWallet();
+    toast.info("Wallet disconnected.");
   }
 
-  useEffect(() => {
-    (async () => {
-      const key = await getPublicKey();
-      await updateState(key);
-    })();
-  }, []);
-
-  const truncateKey = (key: string) => {
-    return `${key.slice(0, 4)}...${key.slice(-4)}`;
-  };
+  const truncateKey = (key: string) => `${key.slice(0, 4)}...${key.slice(-4)}`;
 
   if (loading) {
-    return (
-      <div className="animate-pulse bg-slate-700/50 h-10 w-32 rounded-lg"></div>
-    );
+    return <div className="animate-pulse bg-slate-700/50 h-10 w-32 rounded-lg" />;
   }
 
   return (
@@ -68,7 +39,9 @@ export default function ConnectWallet() {
             <div className="flex gap-2 text-xs font-bold text-white">
               <span>{parseFloat(balances?.XLM || "0").toFixed(2)} XLM</span>
               <span className="text-slate-500">|</span>
-              <span className="text-emerald-400">{parseFloat(balances?.USDC || "0").toFixed(2)} USDC</span>
+              <span className="text-emerald-400">
+                {parseFloat(balances?.USDC || "0").toFixed(2)} USDC
+              </span>
             </div>
           </div>
           <button
@@ -81,7 +54,7 @@ export default function ConnectWallet() {
         </div>
       ) : (
         <button
-          onClick={() => connect(showConnected)}
+          onClick={handleConnect}
           className="flex items-center gap-2 bg-[#50C878] hover:bg-[#45b76b] text-white px-5 py-2 rounded-lg transition-all duration-300 font-semibold shadow-[0_0_15px_rgba(80,200,120,0.3)] hover:shadow-[0_0_20px_rgba(80,200,120,0.5)]"
         >
           <Wallet size={18} />
